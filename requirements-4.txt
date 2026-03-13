@@ -1,5 +1,0 @@
-pyTelegramBotAPI
-flask
-requests
-google-generativeai
-psutil

@@ -17,7 +17,7 @@ from threading import Thread
 # ============================================================
 #  الإعدادات — غيّر هنا فقط
 # ============================================================
-TOKEN        = "8622811919:AAG2NevduDQQZezlYA7kTIHKrnKc1v5uzq4"
+TOKEN        = "8645478080:AAFvkKiemIpb17AV4GF-YpSZFmZ9_hEQqsQ"
 DEVELOPER_ID = 8206539702
 GEMINI_KEY   = "AIzaSyCGo9K-UuAqiYwBASiPMvfrbSheejF3aZ0"
 developer    = "HJ_K6"   # يوزر المطور بدون @
@@ -752,6 +752,10 @@ def admin_panel_markup():
         types.InlineKeyboardButton("🔑 تغيير التوكن",    callback_data="adm_change_token"),
         types.InlineKeyboardButton("🪪 تغيير الأيدي",    callback_data="adm_change_devid")
     )
+    mk.add(
+        types.InlineKeyboardButton("🔄 تحديث البوت",     callback_data="adm_update_bot"),
+        types.InlineKeyboardButton("✉️ رسالة لمستخدم",  callback_data="adm_msg_user")
+    )
     mk.add(types.InlineKeyboardButton("🔙 رجوع", callback_data="back_main"))
     return mk
 
@@ -773,19 +777,20 @@ def file_panel(filename, uid):
 # ============================================================
 #  رسالة الترحيب
 # ============================================================
-WELCOME = """
-🤍 <b>أهلاً بك في بوت الاستضافة</b>
-
-<pre>
-• رفع وتشغيل ملفات Python & ZIP
-• نظام نقاط ودعوات وهدايا
-• حماية AI متقدمة (محلي + Gemini)
-• مستويات: عادي | VIP | PRO
-• تشغيل مستمر 24/7
-</pre>
-
-استخدم الأزرار ↙️
-"""
+WELCOME = (
+    "╔══════════════════════╗\n"
+    "       🚀 <b>بوت الاستضافة</b> 🚀\n"
+    "╚══════════════════════╝\n\n"
+    "مرحباً بك في أقوى بوت استضافة! 🎉\n\n"
+    "⚡ <b>مميزاتنا:</b>\n"
+    "┣ 📤 رفع وتشغيل ملفات <code>Python</code> و <code>ZIP</code>\n"
+    "┣ 💎 نظام نقاط ودعوات وهدايا\n"
+    "┣ 🛡️ حماية <b>AI</b> متقدمة بـ Gemini\n"
+    "┣ 👑 مستويات: عادي | VIP | PRO\n"
+    "┗ ⏱️ تشغيل مستمر <b>24/7</b>\n\n"
+    "━━━━━━━━━━━━━━━━━━━━━━\n"
+    "👇 اختر من القائمة أدناه"
+)
 
 # ============================================================
 #  /start
@@ -798,24 +803,37 @@ def cmd_start(message):
     if is_banned(uid):
         r = db_fetchone("SELECT reason FROM banned_users WHERE user_id=?", (uid,))
         mk = types.InlineKeyboardMarkup()
-        mk.add(types.InlineKeyboardButton("📨 طلب فك الحظر",
-               callback_data=f"req_unban:{uid}"))
-        bot.send_message(uid, f"<pre>⛔ أنت محظور\nالسبب: {r[0] if r else 'غير محدد'}</pre>",
-                         reply_markup=mk)
+        mk.add(types.InlineKeyboardButton("📨 طلب فك الحظر", callback_data=f"req_unban:{uid}"))
+        bot.send_message(uid,
+            "🚫 <b>تم حظرك من البوت</b>\n\n"
+            "━━━━━━━━━━━━━━━\n"
+            f"📋 <b>السبب:</b> <code>{r[0] if r else 'غير محدد'}</code>\n"
+            "━━━━━━━━━━━━━━━\n"
+            "يمكنك طلب فك الحظر من الزر أدناه 👇",
+            reply_markup=mk)
         return
 
     register_user(uid, message.from_user.first_name,
                   message.from_user.username, payload)
 
     if not bot_enabled():
-        bot.send_message(uid, "<pre>🚫 البوت معطل حالياً</pre>"); return
+        bot.send_message(uid,
+            "⚙️ <b>البوت في وضع الصيانة</b>\n\n"
+            "🔧 نعمل على تحسين الخدمة\n"
+            "⏳ يرجى المحاولة لاحقاً"); return
 
     if is_paid_mode() and not is_admin(uid):
-        bot.send_message(uid, f"<pre>💵 البوت في وضع مدفوع\nتواصل: @{developer}</pre>"); return
+        bot.send_message(uid,
+            "💎 <b>البوت في الوضع المدفوع</b>\n\n"
+            "━━━━━━━━━━━━━━━\n"
+            f"📩 للاشتراك تواصل مع: @{developer}\n"
+            "━━━━━━━━━━━━━━━"); return
 
     if not check_subscription(uid):
-        bot.send_message(uid, "<pre>📢 اشترك في القنوات أولاً:</pre>",
-                         reply_markup=get_sub_markup()); return
+        bot.send_message(uid,
+            "📢 <b>الاشتراك الإجباري</b>\n\n"
+            "يجب الاشتراك في القنوات التالية\nللاستمرار في استخدام البوت 👇",
+            reply_markup=get_sub_markup()); return
 
     bot.send_message(uid, WELCOME, reply_markup=main_panel(uid))
 
@@ -1463,6 +1481,26 @@ def cb(call):
         bot.register_next_step_handler(msg, _change_devid_step)
         answer(); return
 
+    if data == "adm_update_bot":
+        if not is_admin(uid): answer("🚫", True); return
+        mk = types.InlineKeyboardMarkup()
+        mk.add(types.InlineKeyboardButton("❌ إلغاء", callback_data="admin_panel"))
+        msg = bot.send_message(chat_id,
+            "<pre>🔄 تحديث البوت\n\nأرسل الملف الجديد (.py) وسيتم تطبيق التحديث فوراً</pre>",
+            reply_markup=mk)
+        bot.register_next_step_handler(msg, _update_bot_step, uid)
+        answer(); return
+
+    if data == "adm_msg_user":
+        if not is_admin(uid): answer("🚫", True); return
+        mk = types.InlineKeyboardMarkup()
+        mk.add(types.InlineKeyboardButton("❌ إلغاء", callback_data="admin_panel"))
+        msg = bot.send_message(chat_id,
+            "<pre>✉️ أرسل رسالة لمستخدم محدد\n\nاكتب بالصيغة:\nآيدي_المستخدم\nنص_الرسالة\n\nمثال:\n123456789\nأهلاً بك!</pre>",
+            reply_markup=mk)
+        bot.register_next_step_handler(msg, _msg_user_step, uid)
+        answer(); return
+
     # ─── قبول/رفض ملفات الاختراق ─────────────────────────
     if data.startswith("admin_accept:"):
         if not is_admin(uid): answer("🚫", True); return
@@ -1560,6 +1598,69 @@ def _broadcast_step(message):
     bot.send_message(message.chat.id,
         f"<pre>📢 البث انتهى\n✅ نجح: {sent}\n❌ فشل: {failed}</pre>",
         reply_markup=admin_panel_markup())
+
+def _msg_user_step(message, admin_uid):
+    """إرسال رسالة لمستخدم محدد"""
+    try:
+        lines = message.text.strip().split('\n', 1)
+        if len(lines) < 2:
+            bot.send_message(message.chat.id,
+                "<pre>❌ صيغة خاطئة\nمثال:\n123456789\nنص الرسالة</pre>",
+                reply_markup=admin_panel_markup()); return
+        target = int(lines[0].strip())
+        text   = lines[1].strip()
+        bot.send_message(target, f"<pre>📨 رسالة من الأدمن:\n\n{text}</pre>")
+        bot.send_message(message.chat.id,
+            f"<pre>✅ تم إرسال الرسالة للمستخدم {target}</pre>",
+            reply_markup=admin_panel_markup())
+    except ValueError:
+        bot.send_message(message.chat.id,
+            "<pre>❌ آيدي غير صحيح</pre>", reply_markup=admin_panel_markup())
+    except Exception as e:
+        bot.send_message(message.chat.id,
+            f"<pre>❌ فشل الإرسال: {e}</pre>", reply_markup=admin_panel_markup())
+
+def _update_bot_step(message, admin_uid):
+    """استقبال ملف تحديث البوت وتطبيقه"""
+    if not is_admin(admin_uid): return
+    # تأكد إن المستخدم أرسل ملف
+    if not message.document:
+        bot.send_message(message.chat.id,
+            "<pre>❌ لم ترسل ملفاً\nأرسل ملف .py</pre>",
+            reply_markup=admin_panel_markup()); return
+    fname = message.document.file_name
+    if not fname.endswith('.py'):
+        bot.send_message(message.chat.id,
+            "<pre>❌ الملف يجب أن يكون .py</pre>",
+            reply_markup=admin_panel_markup()); return
+    try:
+        prog = bot.send_message(message.chat.id, "<pre>⏳ جاري تطبيق التحديث...</pre>")
+        # تنزيل الملف
+        file_info = bot.get_file(message.document.file_id)
+        downloaded = bot.download_file(file_info.file_path)
+        # تحقق syntax
+        try:
+            ast.parse(downloaded.decode('utf-8', errors='ignore'))
+        except SyntaxError as e:
+            bot.edit_message_text(f"<pre>❌ خطأ في الكود:\n{e}\n\nلم يتم التحديث</pre>",
+                message.chat.id, prog.message_id, reply_markup=admin_panel_markup()); return
+        # نسخ احتياطي للملف الحالي
+        script_path = os.path.abspath(__file__)
+        backup_path = script_path + ".bak"
+        shutil.copy2(script_path, backup_path)
+        # كتابة الملف الجديد
+        with open(script_path, 'wb') as f:
+            f.write(downloaded)
+        bot.edit_message_text(
+            "<pre>✅ تم تحديث البوت بنجاح!\n\n🔄 جاري إعادة التشغيل...</pre>",
+            message.chat.id, prog.message_id)
+        time.sleep(2)
+        # إعادة التشغيل
+        os.execv(sys.executable, [sys.executable] + sys.argv)
+    except Exception as e:
+        bot.send_message(message.chat.id,
+            f"<pre>❌ فشل التحديث: {e}</pre>",
+            reply_markup=admin_panel_markup())
 
 def _add_vip_step(message, admin_uid):
     try:
@@ -1706,11 +1807,26 @@ def _add_pts_step(message, admin_uid):
         parts = message.text.strip().split()
         target, pts = int(parts[0]), int(parts[1])
         new = add_points(target, pts, admin_uid, "إضافة من الأدمن")
-        try: bot.send_message(target,
-            f"<pre>💰 تمت إضافة {pts} نقطة\nرصيدك: {new}</pre>")
+        now = datetime.now().strftime("%Y-%m-%d %H:%M")
+        # رسالة للمستخدم
+        try:
+            bot.send_message(target,
+                f"✨ <b>تم تزويد نقاطك!</b>\n\n"
+                f"━━━━━━━━━━━━━━━\n"
+                f"💎 <b>النقاط المضافة:</b> <code>+{pts}</code>\n"
+                f"💰 <b>رصيدك الحالي:</b> <code>{new} نقطة</code>\n"
+                f"🕐 <b>التوقيت:</b> <code>{now}</code>\n"
+                f"━━━━━━━━━━━━━━━\n"
+                f"🎯 استخدم نقاطك من القائمة الرئيسية!")
         except: pass
+        # رسالة للأدمن
         bot.send_message(message.chat.id,
-            f"<pre>✅ تمت إضافة {pts} نقطة للمستخدم {target}\nرصيده: {new}</pre>",
+            f"✅ <b>تمت إضافة النقاط بنجاح</b>\n\n"
+            f"━━━━━━━━━━━━━━━\n"
+            f"👤 <b>المستخدم:</b> <code>{target}</code>\n"
+            f"💎 <b>النقاط المضافة:</b> <code>+{pts}</code>\n"
+            f"💰 <b>رصيده الجديد:</b> <code>{new} نقطة</code>\n"
+            f"━━━━━━━━━━━━━━━",
             reply_markup=admin_panel_markup())
     except:
         bot.send_message(message.chat.id,
